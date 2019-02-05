@@ -16,6 +16,7 @@ class API:
         self.username = username
         self.password = password
         self.auth = None
+        self.session = requests.Session()
         if 'verify_tls' not in kwargs.keys():
             self. verify_tls = True
         else:
@@ -32,7 +33,7 @@ class API:
     def do_request(self, method, data):
         try:
             data = {'jsonrpc':'2.0','method': method, 'params': data,'id':1, 'auth':self.auth}
-            response = requests.post(self.server+'/api_jsonrpc.php', json=data)
+            response = self.session.post(self.server+'/api_jsonrpc.php', json=data)
             self.logger.debug(response.status_code)
             received_data = response.json()
             if 'error' in received_data:
