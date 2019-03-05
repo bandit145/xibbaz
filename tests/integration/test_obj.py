@@ -8,7 +8,6 @@ def test_create_group():
 	api.login()
 	group = objects.HostGroup('test_group', api, logging)
 	assert group.ensure()
-	#assert group.id
 
 
 # def test_create_template():

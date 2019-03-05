@@ -4,3 +4,6 @@ class ZabbixException(Exception):
 
 class ZabbixAPIException(ZabbixException):
 	pass
+
+class ZabbixPropertyException(ZabbixException):
+	pass
