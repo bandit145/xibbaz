@@ -1,3 +1,4 @@
+
 class ZabbixException(Exception):
 	pass
 

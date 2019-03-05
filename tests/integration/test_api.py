@@ -1,17 +1,18 @@
 from zabbix_control.src.api import API
+from zabbix_control.src.exceptions import *
 import logging
 
 
 def test_do_request():
     api = API('http://localhost','','', logging)
-    assert(api.do_request('apiinfo.version',{})) == ('success','4.0.3')
+    assert(api.do_request('apiinfo.version',{})) == '4.0.3'
 
 
 def test_login():
     user = 'Admin'
     password = 'zabbix'
     api = API('http://localhost', user, password, logging)
-    assert(len(api.do_request('user.login',{'user':user,'password':password})[1])) == 32
+    assert(len(api.do_request('user.login',{'user':user,'password':password}))) == 32
     api.login()
     assert(len(api.auth)) == 32
 
@@ -19,14 +20,17 @@ def test_login():
 def test_name_to_id():
     api = API('http://localhost', 'Admin', 'zabbix', logging)
     api.login()
-    assert(api.name_to_id('hostgroup','Linux servers')) == 2
+    assert(api.name_to_id('hostgroup','Linux servers')) == "2"
 
-def test_error_return():
-    api = API('http://localhost', 'Admin', 'zabbix', logging)
-    api.login()
-    assert(api.do_request('what',{})[0]) == 'error' 
 
 def test_authenticated_do_request():
     api = API('http://localhost', 'Admin', 'zabbix', logging)
     api.login()
-    assert(api.do_request('template.create',{'groups':{'groupid':2},'host':'test-template'}))[0] == 'success'
+    assert(api.do_request('template.create',{'groups':{'groupid':2},'host':'test-template'})) == {'templateids': ['10261']}
+
+
+def test_find():
+    api = API('http://localhost', 'Admin', 'zabbix', logging)
+    api.login()
+    assert(api.item_exists('template','Template OS Linux')) == True
+    assert(api.item_exists('template','adsadsad')) == False

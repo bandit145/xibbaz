@@ -1,0 +1,44 @@
+---
+
+actions:
+  - name: test action
+    status: enabled
+    operations:
+      - operationtype: send_message
+    recovery_operations:
+      - operationtype: send_message
+    acknowledge_operations:
+      - operationtype: send_message
+
+host_groups:
+  - test_group
+
+templates:
+  - name: test_template
+    description: test_template
+    groups:
+      - test_group
+
+  - name: test_template2
+    description: test_template2
+    groups:
+      - test_group
+    templates: 
+      - name: test_template
+        macros:
+          - name: test_macro
+            value: test
+        items:
+          - name: test_item
+            #key_
+            key: test_item
+            type: zabbix agent
+            value_type: numeric_float
+        triggers:
+          - description: test trigger
+            expression: "{test_template2:test_item.last()>5}"
+            tags:
+              - tag: test_tag
+                value: "{{ITEM.VALUE}}"
+            dependencies:
+              - random_dep
