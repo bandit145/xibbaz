@@ -37,10 +37,11 @@ class API:
 
 
     def name_to_id(self, item, name):
-        return self.get_item(item, name)[self.GROUP_MAPS[item]['id']]
+        return int(self.get_item(item, name)[self.GROUP_MAPS[item]['id']])
 
 
     def item_exists(self, item, name):
+        self.logger.debug('checking if item exists: '+str({'filter':{self.GROUP_MAPS[item]['filter']:[name]}}))
         response = self.do_request(item+'.get', {'filter':{self.GROUP_MAPS[item]['filter']:[name]}})
         if len(response) > 0:
             return True
@@ -48,6 +49,7 @@ class API:
 
     def do_request(self, method, data):
         data = {'jsonrpc':'2.0','method': method, 'params': data,'id':1, 'auth':self.auth}
+        self.logger.debug(data)
         response = self.session.post(self.server+'/api_jsonrpc.php', json=data)
         self.logger.debug(response.status_code)
         self.logger.debug(response.json())
