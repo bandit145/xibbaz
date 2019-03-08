@@ -27,10 +27,14 @@ ZABBIX_ITEM_TYPES = {
 class ZabbixObject:
 
     fields = []
+    sub_items = []
     # key name zabbix returns on search
-    RETURN_ID_KEY = ''
+    PARAM_MAP = {}
+    GET_SELECT = None
+    RETURN_ID_KEY = None
     # actual ID key name for update/delete operations
-    ID_KEY = ''
+    ID_KEY = None
+    changed = False
 
     def __init__(self, name, api, logger):
         for item in self.fields:
@@ -42,9 +46,17 @@ class ZabbixObject:
 
     def get_obj_data(self, id_req=False):
         obj_data =  {key: self.__dict__[key] for key in self.fields if self.__dict__[key]}
+        if len(self.sub_items) > 0:
+            for sub_item in self.sub_items:
+                for sub_obj in sub_item:
+                    obj_data[obj_data[sub_item].index(sub_obj)] = sub_obj.get_obj_data()
         if id_req:
             obj_data[self.ID_KEY] = self.id
         return obj_data
+
+    def is_changed(self, other_obj):
+        if self.get_obj_data() != other_obj.get_obj_data():
+            self.changed = True
 
     # ensure object exists and if a diff exists update it
     def ensure(self):
@@ -76,6 +88,9 @@ class ZabbixObject:
     def update(self):
         self.api.do_request(type(self).__name__.lower()+'.update', self.get_obj_data(id_req=True))
 
+    def get_id(self):
+        self.id = self.api.name_to_id(type(self).__name__.lower(), self.name)
+
     def get(self, **kwargs):
         self.logger.debug(str(self)+': getting data')
         # get_obj faciltates us being able to morph this class to contain anything we need
@@ -88,7 +103,10 @@ class ZabbixObject:
         if self.api.item_exists(get_obj, self.name):
             response = self.api.get_item(get_obj, self.name)
             for param in self.fields:
-                self.__dict__[param] = response[param]
+                if param in self.PARAM_MAP.keys():
+                    self.__dict__[param] = response[self.PARAM_MAP[param]]
+                else:
+                    self.__dict__[param] = response[param]
 
 
 class ZabbixItem(ZabbixObject):
@@ -159,9 +177,30 @@ class SNMPItem(ZabbixObject):
 
 class Template(ZabbixObject):
 
+    PARAM_MAP = {
+        'templates': 'parentTemplates'
+    }
+
     RETURN_ID_KEY = 'templateids'
 
+    GET_SELECT = [
+        'selectParentTemplates',
+        'selectItems',
+        'selectDiscoveries',
+        'selectTriggers',
+        'selectApplications'
+    ]
+
     ID_KEY = 'templateid'
+
+    sub_items = [
+        'groups',
+        'templates',
+        'applications',
+        'discoveries',
+        'items',
+        'triggers'
+    ]
 
     fields = [
         'host',
@@ -170,12 +209,13 @@ class Template(ZabbixObject):
         'groups',
         'templates',
         'macros'
+        'applications',
+        'discoveries',
+        'items',
+        'triggers'
     ]
-    items = []
-    triggers = []
-    groups = []
 
-    def __init__(self, name, linked_templates, groups, items, triggers, api, logger):
+    def __init__(self, name, linked_templates, applications ,groups, items, triggers, api, logger):
         super().__init__(name, api, logger)
         self.item = items
         self.triggers = triggers
@@ -183,14 +223,30 @@ class Template(ZabbixObject):
         self.host = name
         self.groups = groups
 
+    def sub_item_get(self):
+        for item in sub_items:
+            for obj in getattr(self, item):
+                obj.get()
+
+
     def ensure(self):
         result = True
-        items_result = [ x.ensure() for x in self.items ]
-        triggers_result = [ x.ensure() for x in self.items ]
+        if self.items:
+            items_result = [ x.ensure() for x in self.items]
+        triggers_result = [ x.ensure() for x in self.items if self.triggers ]
         if True not in triggers_result and True not in items_result:
             result = False
         result = super().ensure()
         return result
+
+    def get(self):
+        super().get(selects=self.GET_SELECT)
+        temp_groups = []
+        for group in self.groups:
+            host_group = HostGroup(group['name'], self.api, self.logger)
+            host_group.id = group['groupid']
+            temp_groups.append(temp_group)
+        self.groups = temp_group
 
 
 class HostGroup(ZabbixObject):

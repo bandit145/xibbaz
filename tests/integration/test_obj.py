@@ -15,7 +15,7 @@ def test_create_group():
 
 def test_create_template_empty():
 	host_group_id = api.name_to_id('hostgroup', 'test_group')
-	template = objects.Template('test_template_empty', None, [{'groupid':host_group_id}] ,None, None, api, logging)
+	template = objects.Template('test_template_empty', None, None ,[{'groupid':host_group_id}] ,None, None, api, logging)
 	assert template.ensure()
 	assert not template.ensure()
 	template.delete()

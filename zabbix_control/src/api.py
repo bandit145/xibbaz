@@ -1,6 +1,6 @@
 import requests
-import sys
 import zabbix_control.src.exceptions as exceptions
+
 
 class API:
 
@@ -32,8 +32,9 @@ class API:
             'user.login', {'user': self.username, 'password': self.password})
         self.auth = result
 
-    def get_item(self, item, name):
-        return self.do_request(item+'.get', {'filter':{self.GROUP_MAPS[item]['filter']:[name]}})[0]
+    def get_item(self, item, filter_list):
+        data = {'filter':{self.GROUP_MAPS[item]['filter']:filter_list}}
+        return self.do_request(item+'.get', data)[0]
 
 
     def name_to_id(self, item, name):
