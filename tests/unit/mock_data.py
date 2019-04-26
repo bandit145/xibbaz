@@ -1,4 +1,4 @@
-template_do_request = [{
+template_do_request = {
             "proxy_hostid": "0",
             "host": "test_template1",
             "status": "3",
@@ -255,6 +255,6 @@ template_do_request = [{
             "triggers": [],
             "applications": [],
             "macros": []
-        }]
+        }
         
 
