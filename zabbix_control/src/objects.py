@@ -44,9 +44,12 @@ class ZabbixObject:
         self. api = api
         self.logger = logger
 
-    # parse data into object
     def get_obj_data(self, id_req=False):
         obj_data =  {key: self.__dict__[key] for key in self.fields if self.__dict__[key]}
+        if len(self.sub_items) > 0:
+            for sub_item in self.sub_items:
+                for sub_obj in sub_item:
+                    obj_data[obj_data[sub_item].index(sub_obj)] = sub_obj.get_obj_data()
         if id_req:
             obj_data[self.ID_KEY] = self.id
         return obj_data
@@ -56,20 +59,15 @@ class ZabbixObject:
             self.changed = True
 
     # ensure object exists and if a diff exists update it
-    def ensure(self, **kwargs):
+    def ensure(self):
         result = True
-        # testing hook to allow this class to be tested in isolation
-        if 'type' in kwargs.keys():
-            zab_obj_name = kwargs['type']
-        else:
-            zab_obj_name = type(self).__name__.lower()
-        if self.api.item_exists(zab_obj_name, self.name):
+        if self.api.item_exists(type(self).__name__.lower(), self.name):
             # since we do not use zabbix as the source of truth we pull the id at 
             # run time to prepare for a possible update (but not everything)
             self.id = self.api.name_to_id(type(self).__name__.lower(), self.name)
             zabbix_obj = ZabbixObject(self.name, self.api, self.logger)
             zabbix_obj.fields = self.fields
-            zabbix_obj.get(type=zab_obj_name)
+            zabbix_obj.get(type=type(self).__name__.lower())
             self.logger.debug('current obj: '+str(self.get_obj_data()))
             self.logger.debug('zabbix server object: '+str(zabbix_obj.get_obj_data()))
             if self.get_obj_data() != zabbix_obj.get_obj_data():
@@ -97,7 +95,6 @@ class ZabbixObject:
         self.logger.debug(str(self)+': getting data')
         # get_obj faciltates us being able to morph this class to contain anything we need
         # for diffing against full class objects
-        # this supports getting this from kwargs as a testing hook (so you can test this class in isolation), you wouldn't need to use this for anything else
         if 'type' in kwargs.keys():
             get_obj = kwargs['type']
         else:
@@ -105,9 +102,7 @@ class ZabbixObject:
         self.id = self.api.name_to_id(get_obj, self.name)
         if self.api.item_exists(get_obj, self.name):
             response = self.api.get_item(get_obj, self.name)
-            self.logger.debug(response)
             for param in self.fields:
-                self.logger.debug(param)
                 if param in self.PARAM_MAP.keys():
                     self.__dict__[param] = response[self.PARAM_MAP[param]]
                 else:
@@ -183,7 +178,7 @@ class SNMPItem(ZabbixObject):
 class Template(ZabbixObject):
 
     PARAM_MAP = {
-        'templates': 'parentTemplates',
+        'templates': 'parentTemplates'
     }
 
     RETURN_ID_KEY = 'templateids'
