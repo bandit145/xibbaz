@@ -1,9 +1,10 @@
-import zabbix_control.src.exceptions as exceptions
+
 
 class ZabbixObject:
 
     fields = []
     sub_items = []
+    item_dep_map ={}
     # key name zabbix returns on search
     PARAM_MAP = {}
     GET_SELECT = None
@@ -34,7 +35,7 @@ class ZabbixObject:
     def get_obj_data(self, id_req=False):
         obj_data =  {key: self.__dict__[key] for key in self.fields if self.__dict__[key]}
         if id_req:
-            obj_data[self.ID_KEY] = self.id
+            obj_data[self.ID_KEY] = self.obj_id
         return obj_data
 
     # ensure object exists and if a diff exists update it
@@ -105,19 +106,53 @@ class Item(ZabbixObject):
     }
 
     fields = [
+        'type'
         'delay',
-        'key_',
         'hostid',
-        'name',
-        'type',
-        'value_type',
+        'interfaceid',
+        'key_',
+        'url',
+        'allow_traps',
+        'authtype',
         'description',
+        'error',
+        'follow_redirects',
+        'headers',
         'history',
-        'inventory_link',
-        'master_itemid'
+        'http_proxy',
+        'jmx_endpoint',
+        'output_format',
+        'params',
+        'password',
+        'port',
+        'post_type',
+        'posts',
+        'privatekey',
+        'publickey',
+        'query_fields',
+        'request_method',
+        'retrieve_mode',
+        'snmp_community',
+        'snmp_oid',
+        'snmpv3_authpassphrase',
+        'snmpv3_authprotocol',
+        'snmpv3_ocntextname',
+        'snmpv3_privpassphrase',
+        'snmpv3_privprotocol',
+        'snmpv3_securitylevel',
+        'snmpv3_securityname',
+        'ssl_cert_file',
+        'ssl_key_file',
+        'ssl_key_password',
         'status',
-        'applications',
-        'preprocessing'
+        'status_codes',
+        'timeout',
+        'trapper_hosts',
+        'trends',
+        'units',
+        'username',
+        'verify_host',
+        'verify_peer'
     ]
 
     def __init__(self, name, api, logger, **kwargs):
@@ -154,6 +189,7 @@ class Template(ZabbixObject):
         'applications',
         'discoveries',
         'items',
+        'applications',
         'triggers'
     ]
 
