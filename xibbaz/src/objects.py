@@ -61,10 +61,11 @@ class ZabbixObject:
     def build(self, info):
         for param in self.fields:
             self.logger.debug(param)
-            if param in self.PARAM_MAP.keys():
-                self.__dict__[param] = info[self.PARAM_MAP[param]]
-            else:
-                self.__dict__[param] = info[param]
+            if param in self.fields or param in self.sub_items:
+                if param in self.PARAM_MAP.keys():
+                    self.__dict__[param] = info[self.PARAM_MAP[param]]
+                else:   
+                    self.__dict__[param] = info[param]
 
     def get(self):
         self.logger.debug(str(self)+': getting data')
@@ -73,97 +74,11 @@ class ZabbixObject:
         # this supports getting this from kwargs as a testing hook (so you can test this class in isolation), you wouldn't need to use this for anything else
         response = self.api.get_item(self.API_NAME, self.name)
         if len(response) > 0:
-            self.id = response[self.ID_KEY]
+            self.id = int(response[self.ID_KEY])
             self.logger.debug(response)
             self.build(response)
         else:
             raise exceptions.ZabbixException('{name} does not exist'.format(name=self.name))
-
-
-class Item(ZabbixObject):
-
-    ZABBIX_ITEM_TYPE = {
-        'zabbix_agent': 0,
-        'snmpv1_agent': 1,
-        'zabbix_trapper': 2,
-        'simple_check': 3,
-        'snmpv2_agent': 4,
-        'zabbix_internal': 5,
-        'snmpv3_agent': 6,
-        'zabbix_agent_active': 7,
-        'zabbix_aggregate': 8,
-        'web_item': 9,
-        'external_check': 10,
-        'database_monitor': 11,
-        'ipmi_agent': 12,
-        'ssh_agent': 13,
-        'telnet_agent': 14,
-        'calculated': 15,
-        'jmx_agent': 16,
-        'snmp_trap': 17,
-        'dependant_item': 18,
-        'http_agent': 19
-    }
-
-    fields = [
-        'type'
-        'delay',
-        'hostid',
-        'interfaceid',
-        'key_',
-        'url',
-        'allow_traps',
-        'authtype',
-        'description',
-        'error',
-        'follow_redirects',
-        'headers',
-        'history',
-        'http_proxy',
-        'jmx_endpoint',
-        'output_format',
-        'params',
-        'password',
-        'port',
-        'post_type',
-        'posts',
-        'privatekey',
-        'publickey',
-        'query_fields',
-        'request_method',
-        'retrieve_mode',
-        'snmp_community',
-        'snmp_oid',
-        'snmpv3_authpassphrase',
-        'snmpv3_authprotocol',
-        'snmpv3_ocntextname',
-        'snmpv3_privpassphrase',
-        'snmpv3_privprotocol',
-        'snmpv3_securitylevel',
-        'snmpv3_securityname',
-        'ssl_cert_file',
-        'ssl_key_file',
-        'ssl_key_password',
-        'status',
-        'status_codes',
-        'timeout',
-        'trapper_hosts',
-        'trends',
-        'units',
-        'username',
-        'verify_host',
-        'verify_peer'
-    ]
-
-    def __init__(self, name, api, logger, **kwargs):
-        try:
-            super().__init__(name, api, logger)
-            self.type = 0
-            for item in self.fields():
-                setattr(self, item, kwargs[item])
-        except KeyError as error:
-            raise exceptions.ZabbixPropertyException(error)
-
 
 class Template(ZabbixObject):
 
@@ -230,8 +145,12 @@ class Template(ZabbixObject):
         self.discoveries = [Discovery(x['name'], api, logger).build(x) for x in self.discoveries]
         self.item = [Item(x['name'], api, logger).build(x) for x in self.items]
         self.triggers = [Trigger(x['name'], api, logger).build(x) for x in self.triggers]
-        
 
+class Trigger(ZabbixObject):
+
+    def __init__(self, name, api, logger):
+        super().__init__(name, api, logger)
+        
 class HostGroup(ZabbixObject):
 
     GET_SELECT = [
@@ -254,4 +173,331 @@ class HostGroup(ZabbixObject):
     def get(self):
         super().get()
         self.templates = [Template(x['name'], api, logger).get() for x in self.templates]
+
+class ValueMap(ZabbixObject):
+
+    GET_SELECT = [
+        'selectMappings'
+    ]
+
+    fields = [
+        'mappings',
+        'name'
+    ]
+    RETURN_ID_KEY ='valuemapids'
+    ID_KEY = 'valuemapid'
+
+    def __init__(self, name, api, logger):
+        super().__init__(name, api, logger)
+
+class Macro(ZabbixObject):
+    specific_item_fields = [
+
+    ]
+    fields = [
+        'value',
+        'macro'
+    ]
+
+    def __init__(self, name, api, logger):
+        self.fields.extend(self.specific_item_fields)
+        super().__init__(name, api, logger)
+
+class HostMacro(ZabbixObject):
+    RETURN_ID_KEY ='hostmacroids'
+    ID_KEY = 'hostmacroid'
+    specific_item_fields = [
+        'hostmacroid'
+    ]
+
+    def __init__(self, name, api, logger):
+        super().__init__(name, api, logger, type='usermacro')
+
+class GlobalMacro(ZabbixObject):
+    RETURN_ID_KEY ='globalmacroids'
+    ID_KEY = 'globalmacroid'
+    specific_item_fields = [
+        'globalmacroid'
+    ]
+
+    def __init__(self, name, api, logger):
+        super().__init__(name, api, logger, type='usermacro')
+
+    def create(self):
+        self.id = int(self.api.do_request(self.API_NAME+'.createglobal',self.get_obj_data())[self.RETURN_ID_KEY][0])
+
+    def delete(self):
+        self.api.do_request(self.API_NAME+'.deleteglobal', [self.id])
+
+    def update(self):
+        self.api.do_request(self.API_NAME+'.updateglobal', self.get_obj_data(id_req=True))
+
+# zabbix items
+class Item(ZabbixObject):
+    ID_KEY = 'itemid'
+    GET_SELECT = [
+        'selectApplications'
+    ]
+    RETURN_ID_KEY = 'itemids'
+    ZABBIX_ITEM_TYPE = None
+    VALUE_TYPES = {
+        'numeric (unsigned)': 3,
+        "3": 'numeric (unsigned)',
+        'numeric (float)': 0,
+        '0':'numeric (float)',
+        'character': 1,
+        '1': 'character',
+        'log': 2,
+        '2': 'log',
+        'text': 4,
+        '4' :'text'
+    }
+
+    specific_item_fields = [
+
+    ]
+
+    fields = [
+        'name',
+        'key_',
+        'value_type',
+        'delay',
+        'type',
+        'applications',
+        'history',
+        'trends',
+        'description',
+        'valuemapid',
+        'units'
+    ]
+
+    def __init__(self, name, api, logger, **kwargs):
+        self.fields.extend(self.specific_item_fields)
+        super().__init__(name, api, logger, type='item')
+
+    def create(self):
+        # patch ints into fields
+        tmp_fields = self.fields.copy()
+        self.value_type = self.VALUE_TYPES[self.value_type]
+        super().create()
+        self.fields = tmp_fields
+
+    def get(self):
+        super().get()
+        # patch names into value_type 
+        self.value_type = self.VALUE_TYPES[self.value_type]
+
+class ZabbixAgentItem(Item):
+
+    ZABBIX_ITEM_TYPE = 0
+
+    def __init__(self, name, api, logger, **kwargs):
+        super().__init__(name, api, logger, type='item')
+
+class SNMPV1AgentItem(Item):
+
+    ZABBIX_ITEM_TYPE = 1
+    specific_item_fields = [
+        'snmp_oid',
+        'snmp_community',
+        'port'
+    ]
+
+    def __init__(self, name, api, logger, **kwargs):
+        super().__init__(name, api, logger, type='item')
+
+class ZabbixTrapperItem(Item):
+
+    ZABBIX_ITEM_TYPE = 2
+    specific_item_fields = [
+        'trapper_hosts'
+    ]
+
+    def __init__(self, name, api, logger, **kwargs):
+        super().__init__(name, api, logger, type='item')
+
+class SimpleCheckItem(Item):
+
+    ZABBIX_ITEM_TYPE = 3
+    specific_item_fields = [
+        'username',
+        'password'
+    ]
+
+    def __init__(self, name, api, logger, **kwargs):
+        super().__init__(name, api, logger, type='item')
+
+class SNMPV2AgentItem(Item):
+
+    ZABBIX_ITEM_TYPE = 4
+    specific_item_fields = [
+        'port',
+        'snmp_oid',
+        'snmp_community'
+    ]
+
+    def __init__(self, name, api, logger, **kwargs):
+        super().__init__(name, api, logger, type='item')
+
+class ZabbixInternalItem(Item):
+
+    ZABBIX_ITEM_TYPE = 5
+
+    def __init__(self, name, api, logger, **kwargs):
+        super().__init__(name, api, logger, type='item')
+
+class SNMPV3AgentItem(Item):
+
+    ZABBIX_ITEM_TYPE = 6
+    specific_item_fields = [
+        'port',
+        'snmp_oid',
+        'snmp_community',
+        'snmpv3_authprotocol',
+        'snmpv3_privprotocol',
+        'snmpv3_contextname',
+        'snmpv3_securitylevel',
+        'snmpv3_authpassphrase',
+        'snmpv3_privpassphrase'
+    ]
+
+    def __init__(self, name, api, logger, **kwargs):
+        super().__init__(name, api, logger, type='item')
+
+class ZabbixAgentActiveItem(Item):
+
+    ZABBIX_ITEM_TYPE = 7
+
+    def __init__(self, name, api, logger, **kwargs):
+        super().__init__(name, api, logger, type='item')
+
+class ZabbixAggregateItem(Item):
+
+    ZABBIX_ITEM_TYPE = 8
+
+    def __init__(self, name, api, logger, **kwargs):
+        super().__init__(name, api, logger, type='item')
+
+class ExternalCheckItem(Item):
+
+    ZABBIX_ITEM_TYPE = 10
+
+    def __init__(self, name, api, logger, **kwargs):
+        super().__init__(name, api, logger, type='item')
+
+class DatabaseMonitorItem(Item):
+
+    ZABBIX_ITEM_TYPE = 11
+    specific_item_fields = [
+        'username',
+        'password',
+        'params'
+    ]
+
+    def __init__(self, name, api, logger, **kwargs):
+        super().__init__(name, api, logger, type='item')
+
+class IPMIAgentItem(Item):
+
+    ZABBIX_ITEM_TYPE = 12
+    specific_item_fields = [
+        'ipmi_sensor'
+    ]
+
+    def __init__(self, name, api, logger, **kwargs):
+        super().__init__(name, api, logger, type='item')
+
+class SSHAgentItem(Item):
+
+    ZABBIX_ITEM_TYPE = 13
+    specific_item_fields = [
+        'params',
+        'username',
+        'password',
+        'publickey',
+        'privatekey'
+    ]
+
+    def __init__(self, name, api, logger, **kwargs):
+        super().__init__(name, api, logger, type='item')
+
+class TelnetAgentItem(Item):
+
+    ZABBIX_ITEM_TYPE = 14
+    specific_item_fields = [
+        'username',
+        'password',
+        'params'
+    ]
+
+    def __init__(self, name, api, logger, **kwargs):
+        super().__init__(name, api, logger, type='item')
+
+class CalculatedItem(Item):
+
+    ZABBIX_ITEM_TYPE = 15
+    specific_item_fields = [
+        'formula'
+    ]
+
+    def __init__(self, name, api, logger, **kwargs):
+        super().__init__(name, api, logger, type='item')
+
+class JMXAgentItem(Item):
+
+    ZABBIX_ITEM_TYPE = 16
+    specific_item_fields = [
+        'jmx_endpoint',
+        'username',
+        'password'
+    ]
+
+    def __init__(self, name, api, logger, **kwargs):
+        super().__init__(name, api, logger, type='item')
+
+class SNMPTrapItem(Item):
+
+    ZABBIX_ITEM_TYPE = 17
+
+    def __init__(self, name, api, logger, **kwargs):
+        super().__init__(name, api, logger, type='item')
+
+class DependantItem(Item):
+
+    ZABBIX_ITEM_TYPE = 18
+    specific_item_fields = [
+        'master_itemid'
+    ]
+
+    def __init__(self, name, api, logger, **kwargs):
+        super().__init__(name, api, logger, type='item')    
+
+class HTTPAgentItem(Item):
+
+    ZABBIX_ITEM_TYPE = 19
+    specific_item_fields = [
+        'url',
+        'query_fields',
+        'request_method',
+        'timeout',
+        'post_type',
+        'posts',
+        'headers',
+        'status_codes',
+        'follow_redirects',
+        'retrive_mode',
+        'output_format',
+        'http_proxy',
+        'verify_peer',
+        'verify_host',
+        'ssl_cert_file',
+        'ssl_key_file',
+        'ssl_key_password',
+        'allow_traps',
+        'trapper_hosts'
+
+    ]
+
+    def __init__(self, name, api, logger, **kwargs):
+        super().__init__(name, api, logger, type='item')
 

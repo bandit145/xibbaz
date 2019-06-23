@@ -1,5 +1,5 @@
-import zabbix_control.src.objects as objects
-import zabbix_control.src.exceptions as exceptions
+import xibbaz.src.objects as objects
+import xibbaz.src.exceptions as exceptions
 
 SUPPORTED_TYPES = [
 	'Template',

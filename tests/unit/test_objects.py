@@ -62,3 +62,25 @@ def test_zabbix_object_diffing():
 	assert zab_obj.get_obj_data() != diff_obj.get_obj_data()
 	zab_obj.diff(diff_obj)
 	assert zab_obj.changed
+
+def test_zabbix_item_obj():
+	mock_api = API('zabbix.com','admin', 'password', logging)
+	mock_api.do_request = MagicMock(return_value=mock_data.item_do_request)
+	item_obj = Item('testitem', mock_api, logging)
+	item_obj.get()
+	assert item_obj.name == 'testitem'
+	assert item_obj.id == 28534
+	assert item_obj.value_type == 'numeric (unsigned)'
+
+def test_zabbix_item_create():
+	mock_api = API('zabbix.com','admin', 'password', logging)
+	mock_api.do_request = MagicMock(return_value={'itemids':['28534']})
+	item_obj = Item('testitem', mock_api, logging)
+	item_obj.value_type = 'numeric (unsigned)'
+	item_obj.create()
+	assert item_obj.id == 28534
+
+
+def test_zabbix_item_diffing():
+	pass
+

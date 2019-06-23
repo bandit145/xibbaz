@@ -1,5 +1,5 @@
 import requests
-import zabbix_control.src.exceptions as exceptions
+import xibbaz.src.exceptions as exceptions
 
 
 class API:
@@ -11,6 +11,10 @@ class API:
         },
         'template': {
             'id': 'templateid',
+            'filter': 'name'
+        },
+        'item':{
+            'id': 'itemid',
             'filter': 'name'
         }
     }
@@ -33,7 +37,7 @@ class API:
             'user.login', {'user': self.username, 'password': self.password})
         self.auth = result
 
-    def get_item(self, item, filter_list):
+    def get_item(self, item, filter_list): 
         data = {'filter':{self.GROUP_MAPS[item]['filter']:filter_list}}
         return self.do_request(item+'.get', data)[0]
 
