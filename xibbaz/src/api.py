@@ -17,6 +17,10 @@ class API:
             'id': 'itemid',
             'filter': 'name'
         }
+        'trigger':{
+            'id': 'triggerid',
+            'filter': 'description'
+        }
     }
 
     def __init__(self, server, username, password, logger, **kwargs):
@@ -41,10 +45,8 @@ class API:
         data = {'filter':{self.GROUP_MAPS[item]['filter']:filter_list}}
         return self.do_request(item+'.get', data)[0]
 
-
     def name_to_id(self, item, name):
         return int(self.get_item(item, name)[self.GROUP_MAPS[item]['id']])
-
 
     def item_exists(self, item, name):
         self.logger.debug('checking if item exists: '+str({'filter':{self.GROUP_MAPS[item]['filter']:[name]}}))
@@ -53,9 +55,13 @@ class API:
             return True
         return False
 
-    def do_request(self, method, data):
+    def do_request(self, method, data, **kwargs):
         self.request_num += 1
         data = {'jsonrpc':'2.0','method': method, 'params': data,'id':self.request_num, 'auth':self.auth}
+        if kwargs['flags']:
+            [setattr(data, x, True) for x in kwargs['flags']]
+        if kwargs['selects']:
+            [setattr(data, x, 'extend') for x in kwargs['selects']]
         self.logger.debug(data)
         response = self.session.post(self.server+'/api_jsonrpc.php', json=data)
         self.logger.debug(response.status_code)

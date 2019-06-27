@@ -1,27 +1,7 @@
 ---
 
-include:
-  - test2_zabbix.yml
-
-actions:
-  - name: test action
-    status: enabled
-    operations:
-      - operationtype: send_message
-    recovery_operations:
-      - operationtype: send_message
-    acknowledge_operations:
-      - operationtype: send_message
-
-host_groups:
-  - test_group
-
-global_macros:
-  - macro: "{$test}"
-    value: "TEST"
-
 templates:
-  - name: test_template
+  - name: test2_template
     macros:
       - macro: "{$test_macro}"
         value: test
@@ -40,3 +20,5 @@ templates:
         tags:
           - tag: test_tag
             value: "idk"
+        dependencies:
+          - "test_template:test trigger"

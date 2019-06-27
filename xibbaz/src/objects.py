@@ -8,6 +8,7 @@ class ZabbixObject:
     # key name zabbix returns on search
     PARAM_MAP = {}
     GET_SELECT = None
+    GET_FLAGS = None
     RETURN_ID_KEY = None
     # actual ID key name for update/delete operations
     ID_KEY = None
@@ -72,7 +73,7 @@ class ZabbixObject:
         # get_obj faciltates us being able to morph this class to contain anything we need
         # for diffing against full class objects
         # this supports getting this from kwargs as a testing hook (so you can test this class in isolation), you wouldn't need to use this for anything else
-        response = self.api.get_item(self.API_NAME, self.name)
+        response = self.api.get_item(self.API_NAME, self.name, selects=self.GET_SELECT, flags=self.GET_FLAGS)
         if len(response) > 0:
             self.id = int(response[self.ID_KEY])
             self.logger.debug(response)
@@ -148,8 +149,81 @@ class Template(ZabbixObject):
 
 class Trigger(ZabbixObject):
 
+    RETURN_ID_KEY ='triggerids'
+    ID_KEY = 'triggerid'
+    GET_SELECT = [
+        'selectTags',
+    ]
+    TRIGGER_PRIORITY = {
+        '0':'not classified',
+        'not classified': 0,
+        '1': 'information',
+        'information': 1,
+        '2': 'warning',
+        'warning': 2,
+        '3': 'average',
+        'average': 3,
+        '4': 'high',
+        'high': 4,
+        '5': 'disaster',
+        'disaster': 5
+    }
+    TRIGGER_STATUS = {
+        '0': 'enabled',
+        'enabled': 0,
+        '1': 'disabled',
+        'disabled': 1
+    }
+    TRIGGER_TYPE = {
+        '0': 'single event',
+        'single event': 0,
+        '1': 'multiple events',
+        'multiple events': 1
+    }
+    TRIGGER_RECOVERY_MODE = {
+        '0': 'default',
+        'default': 0,
+        '1': 'recovery_expression',
+        'recovery_expression': 1,
+        '2': 'none',
+        'none': 2
+    }
+    TRIGGER_MANUAL_CLOSE = {
+        '0': 'no',
+        'no': 0,
+        '1': 'yes',
+        'yes': 1
+    }
+
+    sub_items = [
+        'templates'
+    ]
+
+    fields = [
+        'description',
+        'expression',
+        'comments',
+        'priority',
+        'status',
+        'type',
+        'url',
+        'recovery_mode',
+        'recovery_expression',
+        'correlation_mode',
+        'correlation_tag',
+        'manual_close',
+        'tags'
+    ]
+
     def __init__(self, name, api, logger):
+        self.description = self.name
         super().__init__(name, api, logger)
+
+    def get(self):
+        self.expand
+        super().get()
+
+
         
 class HostGroup(ZabbixObject):
 
