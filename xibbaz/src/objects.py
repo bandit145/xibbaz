@@ -106,21 +106,17 @@ class Template(ZabbixObject):
         'discoveries',
         'items',
         'applications',
-        'triggers'
+        'triggers',
+        'macros'
     ]
 
     fields = [
         'host',
         'groups',
-        'templates',
-        'macros'
     ]
 
-    def __init__(self, name, linked_templates, applications ,groups, items, triggers, api, logger):
+    def __init__(self, name, groups, api, logger):
         super().__init__(name, api, logger)
-        self.item = items
-        self.triggers = triggers
-        self.templates = linked_templates
         self.host = name
         self.groups = groups
 
@@ -145,6 +141,7 @@ class Template(ZabbixObject):
         self.applications = [Application(x['name'], api, logger).build(x) for x in self.applications]
         self.discoveries = [Discovery(x['name'], api, logger).build(x) for x in self.discoveries]
         self.item = [Item(x['name'], api, logger).build(x) for x in self.items]
+        self.macros = [Macro(x['name'], api, logger).build(x) for x in self.macros]
         self.triggers = [Trigger(x['name'], api, logger).build(x) for x in self.triggers]
 
 class Trigger(ZabbixObject):
@@ -195,9 +192,9 @@ class Trigger(ZabbixObject):
         'yes': 1
     }
 
-    sub_items = [
-        'templates'
-    ]
+    # sub_items = [
+    #     'templates'
+    # ]
 
     fields = [
         'description',
@@ -215,8 +212,9 @@ class Trigger(ZabbixObject):
         'tags'
     ]
 
-    def __init__(self, name, api, logger):
+    def __init__(self, name, expression, api, logger):
         self.description = self.name
+        self.expression = expression
         super().__init__(name, api, logger)
 
     def get(self):
@@ -273,9 +271,11 @@ class Macro(ZabbixObject):
         'macro'
     ]
 
-    def __init__(self, name, api, logger):
+    def __init__(self, name, value, api, logger):
         self.fields.extend(self.specific_item_fields)
         super().__init__(name, api, logger)
+        self.macro = name
+        self.value = value
 
 class HostMacro(ZabbixObject):
     RETURN_ID_KEY ='hostmacroids'
@@ -290,12 +290,18 @@ class HostMacro(ZabbixObject):
 class GlobalMacro(ZabbixObject):
     RETURN_ID_KEY ='globalmacroids'
     ID_KEY = 'globalmacroid'
+    fields = [
+        'value',
+        'macro'
+    ]
     specific_item_fields = [
         'globalmacroid'
     ]
 
-    def __init__(self, name, api, logger):
+    def __init__(self, name, value, api, logger):
         super().__init__(name, api, logger, type='usermacro')
+        self.macro = name
+        self.value = value
 
     def create(self):
         self.id = int(self.api.do_request(self.API_NAME+'.createglobal',self.get_obj_data())[self.RETURN_ID_KEY][0])

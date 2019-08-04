@@ -15,7 +15,7 @@ templates:
         type: ZabbixTrapper
         value_type: numeric (unsigned)
     triggers:
-      - description: test trigger
+      - description: test2_trigger
         expression: "{test_template2:test_item.last()>5}"
         tags:
           - tag: test_tag

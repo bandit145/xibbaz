@@ -1,7 +1,7 @@
 ---
 
 include:
-  - test2_zabbix.yml
+  - tests/test2_zabbix.yml
 
 actions:
   - name: test action
@@ -34,9 +34,31 @@ templates:
         key_: tes2_item_key
         type: ZabbixTrapper
         value_type: numeric (unsigned)
+    host_groups:
+      - test_group
     triggers:
-      - description: test trigger
+      - name: test_trigger
         expression: "{test_template2:test_item.last()>5}"
+        tags:
+          - tag: test_tag
+            value: "idk"
+
+  - name: test3_template
+    macros:
+      - macro: "{$test_macro}"
+        value: test
+    items:
+      - name: test_item
+        key_: test_item_key
+        type: ZabbixAgent
+        value_type: numeric (float)
+      - name: test_item
+        key_: tes_item_key
+        type: ZabbixTrapper
+        value_type: numeric (unsigned)
+    triggers:
+      - description: test3_trigger
+        expression: "{test_template3:test_item.last()>5}"
         tags:
           - tag: test_tag
             value: "idk"
