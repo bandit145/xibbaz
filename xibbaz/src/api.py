@@ -16,7 +16,7 @@ class API:
         'item':{
             'id': 'itemid',
             'filter': 'name'
-        }
+        },
         'trigger':{
             'id': 'triggerid',
             'filter': 'description'
@@ -41,9 +41,9 @@ class API:
             'user.login', {'user': self.username, 'password': self.password})
         self.auth = result
 
-    def get_item(self, item, filter_list): 
+    def get_item(self, item, filter_list, **kwargs): 
         data = {'filter':{self.GROUP_MAPS[item]['filter']:filter_list}}
-        return self.do_request(item+'.get', data)[0]
+        return self.do_request(item+'.get', data, **kwargs)[0]
 
     def name_to_id(self, item, name):
         return int(self.get_item(item, name)[self.GROUP_MAPS[item]['id']])

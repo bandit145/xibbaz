@@ -64,20 +64,6 @@ def objectize_config(config, api, logger):
 	if 'templates' in conf_keys:
 		new_config['templates'] = [objectize_template(x, new_config, api, logger) for x in config['templates']]
 
-def objectize_template(template, new_config, api, logger):
-	temp_keys = template.keys()
-	member_groups = [x.name for x in new_config['host_groups'] if x.name in template['host_groups']]
-	new_temp = objects.Template(template['name'], member_groups)
-	if 'macros' in temp_keys:
-		new_temp.macros = [objects.Macro(x['macro'], x['value']) for x in template['macros']]
-	if 'triggers' in temp_keys:
-		new_temp.triggers = [objectize_trigger(x, api, logger) for x in template['triggers']]
-
-# TODO: maybe look at rewriting the objects module to support kwargs everything in init	
-def objectize_trigger(trigger, api, logger):
-	# new_trig = objects.Trigger(trigger['name'])
-	pass
-
 def flatten_templates(config):
 	return [x['name'] for x in config['templates']]
 

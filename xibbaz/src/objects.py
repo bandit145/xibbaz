@@ -1,4 +1,4 @@
-
+import xibbaz.src.exceptions as exceptions
 
 class ZabbixObject:
 
@@ -34,7 +34,7 @@ class ZabbixObject:
 
     # parse data into object
     def get_obj_data(self, id_req=False):
-        obj_data =  {key: self.__dict__[key] for key in self.fields if self.__dict__[key]}
+        obj_data =  {key: self.__dict__[key] for key in self.fields if self.__dict__[key] and key not in self.sub_items}
         if id_req:
             obj_data[self.ID_KEY] = self.obj_id
         return obj_data
@@ -60,7 +60,8 @@ class ZabbixObject:
         self.id = self.api.name_to_id(self.API_NAME, self.name)
 
     def build(self, info):
-        for param in self.fields:
+        combined_fields = self.fields + self.sub_items
+        for param in combined_fields:
             self.logger.debug(param)
             if param in self.fields or param in self.sub_items:
                 if param in self.PARAM_MAP.keys():
@@ -70,9 +71,6 @@ class ZabbixObject:
 
     def get(self):
         self.logger.debug(str(self)+': getting data')
-        # get_obj faciltates us being able to morph this class to contain anything we need
-        # for diffing against full class objects
-        # this supports getting this from kwargs as a testing hook (so you can test this class in isolation), you wouldn't need to use this for anything else
         response = self.api.get_item(self.API_NAME, self.name, selects=self.GET_SELECT, flags=self.GET_FLAGS)
         if len(response) > 0:
             self.id = int(response[self.ID_KEY])
@@ -125,24 +123,50 @@ class Template(ZabbixObject):
             for obj in getattr(self, item):
                 obj.get()
 
-    def ensure(self):
-        result = True
+    def diff(other_obj):
+        # return list of sub items that we will check for changes
+        template_change = []
+        changed_sub_items = {
+            'templates': None,
+            'applications': None, 
+            'discoveries': None, 
+            'items': None, 
+            'macros': None,
+            'triggers': None
+        }
+        template_change[0] = super().diff(other_obj)
+        #if self.templates and templates.
+
+    # TODO: Fix these by checking if they are none and use the required constructor args
+    def build(self, info):
+        super().build(info)
+        if self.templates:
+            self.templates = [Template(x['name'], self.api, self.logger).build(x) for x in self.templates]
+        if self.applications:
+            self.applications = [Application(x['name'], self.api, self.logger).build(x) for x in self.applications]
+        #if self.discoveries:
+        #    self.discoveries = [Discovery(x['name'], self.api, self.logger).build(x) for x in self.discoveries]
         if self.items:
-            items_result = [x.ensure() for x in self.items]
-        triggers_result = [x.ensure() for x in self.items if self.triggers]
-        if True not in triggers_result and True not in items_result:
-            result = False
-        result = super().ensure()
-        return result
+            self.items = [Item(x['name'], self.api, self.logger).build(x) for x in self.items]
+        if self.macros:
+            self.macros = [Macro(x['name'], self.api, self.logger).build(x) for x in self.macros]
+        if self.triggers:
+            self.triggers = [Trigger(x['name'], self.api, self.logger).build(x) for x in self.triggers]
 
     def get(self):
         super().get()
-        self.templates = [Template(x['name'], api, logger).build(x) for x in self.templates]
-        self.applications = [Application(x['name'], api, logger).build(x) for x in self.applications]
-        self.discoveries = [Discovery(x['name'], api, logger).build(x) for x in self.discoveries]
-        self.item = [Item(x['name'], api, logger).build(x) for x in self.items]
-        self.macros = [Macro(x['name'], api, logger).build(x) for x in self.macros]
-        self.triggers = [Trigger(x['name'], api, logger).build(x) for x in self.triggers]
+        if self.templates:
+            self.templates = [Template(x['name'], self.api, self.logger).build(x) for x in self.templates]
+        if self.applications:
+            self.applications = [Application(x['name'], self.api, self.logger).build(x) for x in self.applications]
+        #if self.discoveries:
+        #    self.discoveries = [Discovery(x['name'], self.api, self.logger).build(x) for x in self.discoveries]
+        if self.items:
+            self.items = [Item(x['name'], self.api, self.logger).build(x) for x in self.items]
+        if self.macros:
+            self.macros = [Macro(x['name'], self.api, self.logger).build(x) for x in self.macros]
+        if self.triggers:
+            self.triggers = [Trigger(x['name'], self.api, self.logger).build(x) for x in self.triggers]
 
 class Trigger(ZabbixObject):
 

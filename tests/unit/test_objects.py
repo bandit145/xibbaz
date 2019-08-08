@@ -58,7 +58,7 @@ def test_zabbix_object_diffing():
 	assert zab_obj.get_obj_data() == diff_obj.get_obj_data()
 	zab_obj.diff(diff_obj)
 	assert not zab_obj.changed
-	del diff_obj.groups[0]
+	diff_obj.host = 'test_template_changed'
 	assert zab_obj.get_obj_data() != diff_obj.get_obj_data()
 	zab_obj.diff(diff_obj)
 	assert zab_obj.changed
@@ -80,7 +80,11 @@ def test_zabbix_item_create():
 	item_obj.create()
 	assert item_obj.id == 28534
 
-
-def test_zabbix_item_diffing():
-	pass
-
+# Test Template
+def test_zabbix_template_from_server():
+	mock_api = API('zabbix.com','admin', 'password', logging)
+	mock_api.do_request = MagicMock(return_value=copy.deepcopy(mock_data.template_do_request))
+	zab_template = Template('test_template1', None, mock_api, logging)
+	zab_template.get()
+	print(zab_template.host)
+	assert zab_template.items[0].name == 'random_item'
