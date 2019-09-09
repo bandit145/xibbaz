@@ -79,6 +79,32 @@ class ZabbixObject:
         else:
             raise exceptions.ZabbixException('{name} does not exist'.format(name=self.name))
 
+# rewrite to work down the tree and generate the config
+class Configuration(ZabbixObject):
+
+    fields = [
+        'format',
+        'source',
+        'rules'
+    ]
+
+    RULES = {
+            'applications': {'createMissing': True, 'deleteMissing': True},
+            'discoveryRules': {'createMissing': True, 'updateExisting': True, 'deleteMissing': True},
+            'httptests': {'createMissing': True, 'updateExisting': True, 'deleteMissing': True},
+            'items': {'createMissing': True, 'updateExisting': True, 'deleteMissing': True},
+            'templates': {'createMissing': True, 'updateExisting': True, 'deleteMissing': True},
+            'triggers': {'createMissing': True, 'updateExisting': True, 'deleteMissing': True},
+        }
+
+    def __init__(self, source, api, logger):
+        super().__init__(None, api, logger)
+        self.raw_source = self.source
+        self.source = self.generate_zabbix_conf()
+
+    def generate_zabbix_conf(self):
+
+
 class Template(ZabbixObject):
 
     PARAM_MAP = {
