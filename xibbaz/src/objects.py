@@ -1,4 +1,5 @@
 import xibbaz.src.exceptions as exceptions
+import copy
 
 class ZabbixObject:
 
@@ -45,7 +46,11 @@ class ZabbixObject:
             self.changed = True
         else:
             self.changed = False
+        return self.changed
         self.logger.debug('result:'+ str(self.changed))
+
+    def __eq__(self, other_obj):
+        return self.diff(other_obj)
 
     def create(self):
         self.id = int(self.api.do_request(self.API_NAME+'.create',self.get_obj_data())[self.RETURN_ID_KEY][0])
@@ -58,6 +63,9 @@ class ZabbixObject:
 
     def get_id(self):
         self.id = self.api.name_to_id(self.API_NAME, self.name)
+
+    def generate_config(self):
+        return self.get_obj_data()
 
     def build(self, info):
         combined_fields = self.fields + self.sub_items
@@ -89,7 +97,7 @@ class Configuration(ZabbixObject):
     ]
 
     RULES = {
-            'applications': {'createMissing': True, 'deleteMissing': True},
+            'applications': {'createMissing': False, 'deleteMissing': False},
             'discoveryRules': {'createMissing': True, 'updateExisting': True, 'deleteMissing': True},
             'httptests': {'createMissing': True, 'updateExisting': True, 'deleteMissing': True},
             'items': {'createMissing': True, 'updateExisting': True, 'deleteMissing': True},
@@ -100,10 +108,28 @@ class Configuration(ZabbixObject):
     def __init__(self, source, api, logger):
         super().__init__(None, api, logger)
         self.raw_source = self.source
-        self.source = self.generate_zabbix_conf()
+        self.int_conf = self.g
+
+    def generate_internal_conf(self):
+        self.int_conf = {}
+        for key, value in self.raw_source:
+            if key.lower() == 'templates':
+                self.int_conf['templates'] = [Template(x['name'], x['groups'], self.api, self.logger).build(x) for x in new_source['templates']]
 
     def generate_zabbix_conf(self):
+        zabbix_conf = {}
+        zabbix_conf['templates'] = [x.generate_config() for x in self.int_conf['templates']]
+        return zabbix_conf
 
+    def apply(self):
+        self.api.do_request(self.API_NAME+'.import', self.generate_zabbix_conf)
+
+    def gather(self):
+        response = self.api.get_item(self.API_NAME+'.export')
+
+    def __get_template_ids__(self):
+        response = self.api.do_request('template.get', {})
+        return[x['templateid'] for x in response]
 
 class Template(ZabbixObject):
 
@@ -148,8 +174,8 @@ class Template(ZabbixObject):
         for item in sub_items:
             for obj in getattr(self, item):
                 obj.get()
-
-    def diff(other_obj):
+    #check if equal
+    def __eq__(other_obj):
         # return list of sub items that we will check for changes
         template_change = []
         changed_sub_items = {
@@ -162,6 +188,13 @@ class Template(ZabbixObject):
         }
         template_change[0] = super().diff(other_obj)
         #if self.templates and templates.
+
+    def generate_config(self):
+        data_dump = self.get_obj_data()
+        for item in self.sub_items:
+            if getattr(self, item):
+                data_dump[item] = [x.generate_config() for x in getattr(self, item)]
+        return data_dump
 
     # TODO: Fix these by checking if they are none and use the required constructor args
     def build(self, info):
